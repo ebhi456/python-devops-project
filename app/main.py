@@ -1,8 +1,8 @@
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
+from sqlalchemy.orm import Session
 
-from app.database import engine
-from app.database import Base
 from app import models
+from app.database import Base, engine, get_db
 
 
 Base.metadata.create_all(bind=engine)
@@ -11,7 +11,7 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="Employee Management API",
     description="DevOps demonstration project",
-    version="2.0.0"
+    version="3.0.0"
 )
 
 
@@ -28,3 +28,12 @@ def health_check():
         "status": "UP",
         "message": "Employee API is running"
     }
+
+
+@app.get("/employees")
+def get_employees(
+    db: Session = Depends(get_db)
+):
+    employees = db.query(models.Employee).all()
+
+    return employees
