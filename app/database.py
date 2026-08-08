@@ -3,8 +3,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 DATABASE_URL = (
-    "postgresql://employee_user:"
-    "ChangeThisPassword123"
+    "postgresql://ebinejar_user:"
+    "Naaga@#2508"
     "@localhost:5432/employee_db"
 )
 
