@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: Naaga@2506
       POSTGRES_DB: employee_db
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
 
 volumes:
   postgres_data:
