@@ -23,6 +23,7 @@ resource "aws_instance" "employee_api_ec2_instance" {
   instance_type = var.ec2_instance_type
 
   subnet_id = aws_subnet.public.id
+  key_name = var.key_name
 
   associate_public_ip_address = true
 
