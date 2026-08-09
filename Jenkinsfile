@@ -1,3 +1,4 @@
+```groovy
 pipeline {
     agent any
 
@@ -21,6 +22,15 @@ pipeline {
             }
         }
 
+        stage('Start Application') {
+            steps {
+                sh '''
+                    docker compose down || true
+                    docker compose up -d --build
+                '''
+            }
+        }
+
         stage('Run Tests') {
             steps {
                 sh '''
@@ -37,19 +47,10 @@ pipeline {
             }
         }
 
-        stage('Deploy with Docker Compose') {
+        stage('Health Check') {
             steps {
                 sh '''
-                    docker compose down || true
-                    docker compose up -d --build
-                '''
-            }
-        }
-
-        stage('Verify Deployment') {
-            steps {
-                sh '''
-                    echo "Waiting for application to start..."
+                    echo "Waiting for application..."
                     sleep 10
 
                     curl -f http://localhost:8000/health
@@ -68,3 +69,4 @@ pipeline {
         }
     }
 }
+
