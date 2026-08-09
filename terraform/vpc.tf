@@ -1,18 +1,3 @@
-variable "project_name" {
-  description = "Project name definition"
-  type        = string
-}
-
-variable "vpc_cidr_block" {
-  description = "VPC CIDR block definition"
-  type        = string
-}
-
-variable "public_subnet_cidr_block" {
-  description = "Public subnet CIDR block definition"
-  type        = string
-}
-
 resource "aws_vpc" "employee_api_vpc" {
   cidr_block = var.vpc_cidr_block
 
