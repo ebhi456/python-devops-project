@@ -1,54 +1,35 @@
 services:
 
   api:
-    build: .
-    container_name: employee-api
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "8000:8000"
-########################################
-#    environment:
-#      DB_USER: ebinejar_user
-#      DB_PASSWORD: Naaga@2506
-#      DB_HOST: db
-#      DB_PORT: 5432
-#      DB_NAME: employee_db
-####################################
-
     environment:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
-      DB_HOST: ${DB_HOST}
+      DB_HOST: db
       DB_PORT: ${DB_PORT}
       DB_NAME: ${DB_NAME}
-
     depends_on:
       db:
         condition: service_healthy
 
   db:
     image: postgres:18
-    container_name: employee-db
-####################################
-#    environment:
-#      POSTGRES_USER: ebinejar_user
-#      POSTGRES_PASSWORD: Naaga@2506
-#      POSTGRES_DB: employee_db
-####################################
-
     environment:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-
-    volumes:
-      - postgres_data:/var/lib/postgresql
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ebinejar_user -d employee_db"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
+    volumes:
+      - postgres_data:/var/lib/postgresql
 
 volumes:
   postgres_data:
