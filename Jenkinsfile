@@ -40,6 +40,14 @@ pipeline {
                 }
             }
         }
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    docker build -t employee-api:${BUILD_NUMBER} .
+                    docker tag employee-api:${BUILD_NUMBER} employee-api:latest
+                '''
+            }
+        }
     }
 
     post {
