@@ -41,7 +41,7 @@ pipeline {
                 }
             }
         }
-
+        
         stage('Start Application') {
             steps {
                 withCredentials([
@@ -49,21 +49,22 @@ pipeline {
                         credentialsId: 'employee-db-credentials',
                         usernameVariable: 'DB_USER',
                         passwordVariable: 'DB_PASSWORD'
-                    )
-                ]) {
-                    sh '''
-                        . jenkins-venv/bin/activate
-
-                        export DB_HOST=localhost
-                        export DB_PORT=5432
-                        export DB_NAME=employee_db
-
-                        nohup uvicorn app:app \
-                            --host 0.0.0.0 \
-                            --port 8000 \
-                            > app.log 2>&1 &
-
+                        )
+                    ]) {
+                        sh '''
+                            . jenkins-venv/bin/activate
+                            export DB_HOST=localhost
+                            export DB_PORT=5432
+                            export DB_NAME=employee_db
+                            nohup uvicorn app.main:app \
+                                --host 0.0.0.0 \
+                                --port 8000 \
+                                > app.log 2>&1 &
                         echo $! > app.pid
+                        
+                        sleep 2
+                        
+                        cat app.log
                     '''
                 }
             }
