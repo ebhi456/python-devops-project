@@ -9,16 +9,6 @@ output "ecr_repository_url" {
 }
 
 
-output "ec2_role_name" {
-  description = "Name of the IAM role for EC2"
-  value       = aws_iam_role.employee_api_ec2_role.name
-}
-
-output "ec2_instance_profile_name" {
-  description = "Name of the IAM instance profile for EC2"
-  value       = aws_iam_instance_profile.employee_api_ec2_instance_profile.name
-}
-
 output "vpc_id" {
   description = "employee api vpc id"
   value = aws_vpc.employee_api_vpc.id
@@ -34,17 +24,3 @@ output "security_group_id" {
   value = aws_security_group.employee_api_sg.id
 }
 
-output "ec2_instance_id" {
-  description = "Employee API EC2 instance ID"
-  value       = aws_instance.employee_api_ec2_instance.id
-}
-
-output "ec2_public_ip" {
-  description = "Employee API EC2 public IP"
-  value       = aws_instance.employee_api_ec2_instance.public_ip
-}
-
-output "ec2_public_dns" {
-  description = "Employee API EC2 public DNS"
-  value       = aws_instance.employee_api_ec2_instance.public_dns
-}
