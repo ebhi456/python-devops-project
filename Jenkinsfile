@@ -26,8 +26,8 @@ pipeline {
                 sh '''
                     . jenkins-venv/bin/activate
 
-                    export DB_USER=${DB_USER}
-                    export DB_PASSWORD=${DB_PASSWORD}
+                    export DB_USER=$DB_USER
+                    export DB_PASSWORD=$DB_PASSWORD
                     export DB_HOST=localhost
                     export DB_PORT=5432
                     export DB_NAME=employee_db
