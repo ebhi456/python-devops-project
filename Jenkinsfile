@@ -14,7 +14,7 @@ pipeline {
                 sh '''
                     python3 -m venv jenkins-venv
                     . jenkins-venv/bin/activate
-                    pip install --upgrade pip
+                    python -m pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
             }
@@ -22,10 +22,22 @@ pipeline {
 
         stage('Run Tests') {
             steps {
-                sh '''
-                    . jenkins-venv/bin/activate
-                    pytest
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'employee-db-credentials',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        . jenkins-venv/bin/activate
+
+                        DB_HOST=localhost \
+                        DB_PORT=5432 \
+                        DB_NAME=employee_db \
+                        pytest
+                    '''
+                }
             }
         }
     }
