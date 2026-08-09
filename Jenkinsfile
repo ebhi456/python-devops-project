@@ -54,6 +54,16 @@ pipeline {
         stage('Deploy Docker Container') {
             steps {
                 sh '''
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'employee-db-credentials',
+                            usernameVariable: 'DB_USER',
+                            passwordVariable: 'DB_PASSWORD'
+                        )
+                    ]) {
+                        export DB_USER="$DB_USER"
+                        export DB_PASSWORD="$DB_PASSWORD"
+                    }
                     docker stop employee-api 2>/dev/null || true
                     docker rm employee-api 2>/dev/null || true
                     
