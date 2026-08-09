@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        AWS_REGION    = 'us-east-1'
+        AWS_REGION     = 'us-east-1'
         ECR_REPOSITORY = 'python-devops-project-app'
     }
 
@@ -17,10 +17,12 @@ pipeline {
         stage('Install Dependencies') {
             steps {
                 sh '''
+                    set -e
+
                     python3 -m venv jenkins-venv
                     . jenkins-venv/bin/activate
 
-                    pip install --upgrade pip
+                    python -m pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
             }
@@ -40,6 +42,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        set -e
+
                         echo "======================================"
                         echo "Starting PostgreSQL..."
                         echo "======================================"
@@ -50,6 +54,7 @@ pipeline {
 
                         sleep 10
 
+                        echo "PostgreSQL status:"
                         docker compose ps
                     '''
                 }
@@ -70,6 +75,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        set -e
+
                         . jenkins-venv/bin/activate
 
                         export DB_HOST=localhost
@@ -88,6 +95,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
+                    set -e
+
                     echo "======================================"
                     echo "Building Python DevOps Project Docker image..."
                     echo "Build Number: ${BUILD_NUMBER}"
@@ -106,117 +115,112 @@ pipeline {
 
         stage('Login to ECR') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'AWS_ACCOUNT_ID',
-                        variable: 'AWS_ACCOUNT_ID'
-                    )
-                ]) {
-                    sh '''
-                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                sh '''
+                    set -e
 
-                        echo "======================================"
-                        echo "Logging in to Amazon ECR..."
-                        echo "======================================"
+                    echo "======================================"
+                    echo "Logging in to Amazon ECR..."
+                    echo "======================================"
 
-                        aws ecr get-login-password \
-                            --region ${AWS_REGION} | \
-                        docker login \
-                            --username AWS \
-                            --password-stdin ${ECR_REGISTRY}
+                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                        --query Account \
+                        --output text)
 
-                        echo "ECR login successful."
-                    '''
-                }
+                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+                    echo "AWS Account: ${AWS_ACCOUNT_ID}"
+                    echo "ECR Registry: ${ECR_REGISTRY}"
+
+                    aws ecr get-login-password \
+                        --region "${AWS_REGION}" | \
+                    docker login \
+                        --username AWS \
+                        --password-stdin "${ECR_REGISTRY}"
+
+                    echo "ECR login successful."
+                '''
             }
         }
 
         stage('Tag Image') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'AWS_ACCOUNT_ID',
-                        variable: 'AWS_ACCOUNT_ID'
-                    )
-                ]) {
-                    sh '''
-                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                sh '''
+                    set -e
 
-                        echo "======================================"
-                        echo "Tagging Docker images..."
-                        echo "======================================"
+                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                        --query Account \
+                        --output text)
 
-                        docker tag \
-                            employee-api:${BUILD_NUMBER} \
-                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
+                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-                        docker tag \
-                            employee-api:${BUILD_NUMBER} \
-                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                    echo "======================================"
+                    echo "Tagging Docker images..."
+                    echo "======================================"
 
-                        echo "Image tagging completed."
+                    docker tag \
+                        employee-api:${BUILD_NUMBER} \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
 
-                        docker images | grep employee-api || true
-                    '''
-                }
+                    docker tag \
+                        employee-api:${BUILD_NUMBER} \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+                    echo "Image tagging completed."
+
+                    docker images | grep employee-api || true
+                '''
             }
         }
 
         stage('Push Image to ECR') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'AWS_ACCOUNT_ID',
-                        variable: 'AWS_ACCOUNT_ID'
-                    )
-                ]) {
-                    sh '''
-                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                sh '''
+                    set -e
 
-                        echo "======================================"
-                        echo "Pushing versioned image..."
-                        echo "======================================"
+                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                        --query Account \
+                        --output text)
 
-                        docker push \
-                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
+                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-                        echo "======================================"
-                        echo "Pushing latest image..."
-                        echo "======================================"
+                    echo "======================================"
+                    echo "Pushing versioned image..."
+                    echo "======================================"
 
-                        docker push \
-                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                    docker push \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
 
-                        echo "======================================"
-                        echo "ECR PUSH SUCCESSFUL"
-                        echo "======================================"
-                    '''
-                }
+                    echo "======================================"
+                    echo "Pushing latest image..."
+                    echo "======================================"
+
+                    docker push \
+                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+                    echo "======================================"
+                    echo "ECR PUSH SUCCESSFUL"
+                    echo "======================================"
+                '''
             }
         }
 
         stage('Verify ECR') {
             steps {
-                withCredentials([
-                    string(
-                        credentialsId: 'AWS_ACCOUNT_ID',
-                        variable: 'AWS_ACCOUNT_ID'
-                    )
-                ]) {
-                    sh '''
-                        echo "======================================"
-                        echo "Checking ECR repository..."
-                        echo "======================================"
+                sh '''
+                    set -e
 
-                        aws ecr describe-images \
-                            --repository-name ${ECR_REPOSITORY} \
-                            --region ${AWS_REGION} \
-                            --query 'imageDetails[*].imageTags' \
-                            --output table
+                    echo "======================================"
+                    echo "Checking ECR repository..."
+                    echo "======================================"
 
-                        echo "ECR verification completed."
-                    '''
-                }
+                    aws ecr describe-images \
+                        --repository-name "${ECR_REPOSITORY}" \
+                        --region "${AWS_REGION}" \
+                        --query 'imageDetails[*].imageTags' \
+                        --output table
+
+                    echo "ECR verification completed."
+                '''
             }
         }
 
@@ -234,6 +238,8 @@ pipeline {
                     )
                 ]) {
                     sh '''
+                        set -e
+
                         echo "======================================"
                         echo "Starting Employee API..."
                         echo "======================================"
@@ -300,19 +306,22 @@ pipeline {
             echo '======================================'
 
             sh '''
-                # Stop/remove containers created by this Compose project.
-                # PostgreSQL volumes are NOT removed.
+                echo "Stopping Docker Compose services..."
+
                 docker compose down --remove-orphans || true
 
-                # Remove dangling/unused Docker images.
+                echo "Removing dangling Docker images..."
+
                 docker image prune -f || true
 
-                # Remove unused Docker build cache.
+                echo "Removing unused Docker build cache..."
+
                 docker builder prune -f || true
 
                 echo "Docker cleanup completed."
 
                 echo "Remaining Docker disk usage:"
+
                 docker system df || true
             '''
 
