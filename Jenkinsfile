@@ -62,7 +62,7 @@ pipeline {
                     sh '''
                         echo "Stopping existing Compose deployment..."
 
-                        docker compose down || true
+                        docker compose down --remove-orphans || true
 
                         echo "Starting application and database..."
 
