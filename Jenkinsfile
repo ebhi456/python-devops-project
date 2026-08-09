@@ -24,9 +24,15 @@ pipeline {
         stage('Run Tests') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
-                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD'),
-                    string(credentialsId: 'DB_NAME', variable: 'DB_NAME')
+                    usernamePassword(
+                        credentialsId: 'employee-db-credentials',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASSWORD'
+                    ),
+                    string(
+                        credentialsId: 'DB_NAME',
+                        variable: 'DB_NAME'
+                    )
                 ]) {
                     sh '''
                         . jenkins-venv/bin/activate
@@ -43,20 +49,26 @@ pipeline {
         stage('Deploy with Docker Compose') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
-                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD'),
-                    string(credentialsId: 'DB_NAME', variable: 'DB_NAME')
+                    usernamePassword(
+                        credentialsId: 'employee-db-credentials',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASSWORD'
+                    ),
+                    string(
+                        credentialsId: 'DB_NAME',
+                        variable: 'DB_NAME'
+                    )
                 ]) {
                     sh '''
-                        echo "Stopping existing Docker Compose application..."
+                        echo "Stopping existing Compose deployment..."
 
                         docker compose down || true
 
-                        echo "Building and starting application..."
+                        echo "Starting application and database..."
 
                         docker compose up -d --build
 
-                        echo "Docker Compose deployment completed."
+                        echo "Deployment status:"
 
                         docker compose ps
                     '''
@@ -67,11 +79,10 @@ pipeline {
         stage('Health Check') {
             steps {
                 sh '''
-                    echo "Waiting for application to start..."
-
+                    echo "Waiting for application..."
                     sleep 10
 
-                    echo "Checking application health..."
+                    echo "Checking health endpoint..."
 
                     curl -f http://localhost:8000/health
 
@@ -89,6 +100,7 @@ pipeline {
 
         failure {
             echo 'CI/CD Pipeline failed!'
+
             sh '''
                 docker compose ps || true
                 docker compose logs --tail=50 || true

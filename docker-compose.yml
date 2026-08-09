@@ -1,26 +1,12 @@
 services:
 
-  db:
-    image: postgres:18
-    environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
-      POSTGRES_DB: ${DB_NAME}
-
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-      start_period: 10s
-
-    volumes:
-      - postgres_data:/var/lib/postgresql
-
   api:
     build:
       context: .
       dockerfile: Dockerfile
+
+    ports:
+      - "8000:8000"
 
     environment:
       DB_USER: ${DB_USER}
@@ -29,12 +15,31 @@ services:
       DB_PORT: 5432
       DB_NAME: ${DB_NAME}
 
-    ports:
-      - "8000:8000"
-
     depends_on:
       db:
         condition: service_healthy
+
+  db:
+    image: postgres:18
+
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DB_USER} -d ${DB_NAME}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+    volumes:
+      - postgres_data:/var/lib/postgresql
 
 volumes:
   postgres_data:
