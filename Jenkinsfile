@@ -21,11 +21,34 @@ pipeline {
             }
         }
 
-        stage('Start Application') {
+        stage('Deploy with Docker Compose') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
+                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD'),
+                    string(credentialsId: 'DB_HOST', variable: 'DB_HOST'),
+                    string(credentialsId: 'DB_PORT', variable: 'DB_PORT'),
+                    string(credentialsId: 'DB_NAME', variable: 'DB_NAME')
+                ]) {
+                    sh '''
+                        echo "DB_USER is set: ${DB_USER:+YES}"
+                        echo "DB_HOST is set: ${DB_HOST:+YES}"
+                        echo "DB_PORT is set: ${DB_PORT:+YES}"
+                        echo "DB_NAME is set: ${DB_NAME:+YES}"
+                        echo "DB_PASSWORD is set: ${DB_PASSWORD:+YES}"
+
+                        docker compose down || true
+
+                        docker compose up -d --build
+                    '''
+                }
+            }
+        }
+
+        stage('Verify Containers') {
             steps {
                 sh '''
-                    docker compose down || true
-                    docker compose up -d --build
+                    docker compose ps
                 '''
             }
         }
@@ -34,12 +57,6 @@ pipeline {
             steps {
                 sh '''
                     . jenkins-venv/bin/activate
-
-                    export DB_USER=$DB_USER
-                    export DB_PASSWORD=$DB_PASSWORD
-                    export DB_HOST=localhost
-                    export DB_PORT=5432
-                    export DB_NAME=employee_db
 
                     pytest
                 '''
@@ -68,4 +85,3 @@ pipeline {
         }
     }
 }
-
