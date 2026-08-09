@@ -19,11 +19,17 @@ pipeline {
                 sh '''
                     set -e
 
+                    echo "======================================"
+                    echo "Installing Python dependencies..."
+                    echo "======================================"
+
                     python3 -m venv jenkins-venv
                     . jenkins-venv/bin/activate
 
                     python -m pip install --upgrade pip
                     pip install -r requirements.txt
+
+                    echo "Dependencies installed successfully."
                 '''
             }
         }
@@ -87,6 +93,8 @@ pipeline {
                         echo "======================================"
 
                         pytest
+
+                        echo "Tests completed successfully."
                     '''
                 }
             }
@@ -98,7 +106,7 @@ pipeline {
                     set -e
 
                     echo "======================================"
-                    echo "Building Python DevOps Project Docker image..."
+                    echo "Building Docker Image..."
                     echo "Build Number: ${BUILD_NUMBER}"
                     echo "======================================"
 
@@ -115,112 +123,168 @@ pipeline {
 
         stage('Login to ECR') {
             steps {
-                sh '''
-                    set -e
+                withCredentials([
+                    string(
+                        credentialsId: 'aws-access-key',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -e
 
-                    echo "======================================"
-                    echo "Logging in to Amazon ECR..."
-                    echo "======================================"
+                        echo "======================================"
+                        echo "Logging in to Amazon ECR..."
+                        echo "======================================"
 
-                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
-                        --query Account \
-                        --output text)
+                        export AWS_DEFAULT_REGION="${AWS_REGION}"
 
-                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                            --query Account \
+                            --output text)
 
-                    echo "AWS Account: ${AWS_ACCOUNT_ID}"
-                    echo "ECR Registry: ${ECR_REGISTRY}"
+                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-                    aws ecr get-login-password \
-                        --region "${AWS_REGION}" | \
-                    docker login \
-                        --username AWS \
-                        --password-stdin "${ECR_REGISTRY}"
+                        echo "AWS Account: ${AWS_ACCOUNT_ID}"
+                        echo "ECR Registry: ${ECR_REGISTRY}"
 
-                    echo "ECR login successful."
-                '''
+                        aws ecr get-login-password \
+                            --region "${AWS_REGION}" | \
+                        docker login \
+                            --username AWS \
+                            --password-stdin "${ECR_REGISTRY}"
+
+                        echo "ECR login successful."
+                    '''
+                }
             }
         }
 
         stage('Tag Image') {
             steps {
-                sh '''
-                    set -e
+                withCredentials([
+                    string(
+                        credentialsId: 'aws-access-key',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -e
 
-                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
-                        --query Account \
-                        --output text)
+                        export AWS_DEFAULT_REGION="${AWS_REGION}"
 
-                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                            --query Account \
+                            --output text)
 
-                    echo "======================================"
-                    echo "Tagging Docker images..."
-                    echo "======================================"
+                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-                    docker tag \
-                        employee-api:${BUILD_NUMBER} \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
+                        echo "======================================"
+                        echo "Tagging Docker Images..."
+                        echo "======================================"
 
-                    docker tag \
-                        employee-api:${BUILD_NUMBER} \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        docker tag \
+                            employee-api:${BUILD_NUMBER} \
+                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
 
-                    echo "Image tagging completed."
+                        docker tag \
+                            employee-api:${BUILD_NUMBER} \
+                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
 
-                    docker images | grep employee-api || true
-                '''
+                        echo "Image tagging completed."
+
+                        echo "Versioned image:"
+                        echo "${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}"
+
+                        echo "Latest image:"
+                        echo "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+                    '''
+                }
             }
         }
 
         stage('Push Image to ECR') {
             steps {
-                sh '''
-                    set -e
+                withCredentials([
+                    string(
+                        credentialsId: 'aws-access-key',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -e
 
-                    AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
-                        --query Account \
-                        --output text)
+                        export AWS_DEFAULT_REGION="${AWS_REGION}"
 
-                    ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+                        AWS_ACCOUNT_ID=$(aws sts get-caller-identity \
+                            --query Account \
+                            --output text)
 
-                    echo "======================================"
-                    echo "Pushing versioned image..."
-                    echo "======================================"
+                        ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
 
-                    docker push \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
+                        echo "======================================"
+                        echo "Pushing Versioned Image..."
+                        echo "======================================"
 
-                    echo "======================================"
-                    echo "Pushing latest image..."
-                    echo "======================================"
+                        docker push \
+                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:${BUILD_NUMBER}
 
-                    docker push \
-                        ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+                        echo "======================================"
+                        echo "Pushing Latest Image..."
+                        echo "======================================"
 
-                    echo "======================================"
-                    echo "ECR PUSH SUCCESSFUL"
-                    echo "======================================"
-                '''
+                        docker push \
+                            ${ECR_REGISTRY}/${ECR_REPOSITORY}:latest
+
+                        echo "======================================"
+                        echo "ECR PUSH SUCCESSFUL"
+                        echo "======================================"
+                    '''
+                }
             }
         }
 
         stage('Verify ECR') {
             steps {
-                sh '''
-                    set -e
+                withCredentials([
+                    string(
+                        credentialsId: 'aws-access-key',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    sh '''
+                        set -e
 
-                    echo "======================================"
-                    echo "Checking ECR repository..."
-                    echo "======================================"
+                        export AWS_DEFAULT_REGION="${AWS_REGION}"
 
-                    aws ecr describe-images \
-                        --repository-name "${ECR_REPOSITORY}" \
-                        --region "${AWS_REGION}" \
-                        --query 'imageDetails[*].imageTags' \
-                        --output table
+                        echo "======================================"
+                        echo "Checking ECR Repository..."
+                        echo "======================================"
 
-                    echo "ECR verification completed."
-                '''
+                        aws ecr describe-images \
+                            --repository-name "${ECR_REPOSITORY}" \
+                            --region "${AWS_REGION}" \
+                            --query 'imageDetails[*].imageTags' \
+                            --output table
+
+                        echo "ECR verification completed."
+                    '''
+                }
             }
         }
 
@@ -250,12 +314,14 @@ pipeline {
 
                         sleep 10
 
-                        echo "Checking running containers..."
+                        echo "======================================"
+                        echo "Running Containers"
+                        echo "======================================"
 
                         docker compose ps
 
                         echo "======================================"
-                        echo "Running API health check..."
+                        echo "Running API Health Check..."
                         echo "======================================"
 
                         curl -f http://localhost:8000/health
@@ -287,13 +353,22 @@ pipeline {
             echo '======================================'
 
             sh '''
-                echo "Docker Compose status:"
+                echo "======================================"
+                echo "Docker Compose Status"
+                echo "======================================"
+
                 docker compose ps || true
 
-                echo "Recent Docker Compose logs:"
+                echo "======================================"
+                echo "Recent Docker Compose Logs"
+                echo "======================================"
+
                 docker compose logs --tail=50 || true
 
-                echo "Employee API Docker images:"
+                echo "======================================"
+                echo "Employee API Docker Images"
+                echo "======================================"
+
                 docker images | grep employee-api || true
             '''
 
@@ -320,7 +395,9 @@ pipeline {
 
                 echo "Docker cleanup completed."
 
-                echo "Remaining Docker disk usage:"
+                echo "======================================"
+                echo "Remaining Docker Disk Usage"
+                echo "======================================"
 
                 docker system df || true
             '''
