@@ -51,26 +51,23 @@ pipeline {
             }
         }
 
-        stage('Docker run') {
+        stage('Deploy Docker Container') {
             steps {
                 sh '''
-                    echo "Stopping any existing containers..."
-
-                    docker stop employee-api || true
-                    docker rm employee-api || true
-
-                    echo "starting the application using docker container.
-                    docker run -d --name employee-api -p 8000:8000 \
-                        -e DB_USER=ebinejar_user \
-                        -e DB_PASSWORD=Naaga@2506 \
-                        -e DB_HOST=db \
-                        -e DB_PORT=5432 \
-                        -e DB_NAME=employee_db \
-                        employee-api:${BUILD_NUMBER} > app.log 2>&1
-
-                    echo "Application started in the background. Logs are being written to app.log"
-
-                    docker ps
+                    docker stop employee-api 2>/dev/null || true
+                    docker rm employee-api 2>/dev/null || true
+                    
+                    docker run -d \
+                    --name employee-api \
+                    --restart unless-stopped \
+                    --add-host=host.docker.internal:host-gateway \
+                    -p 8000:8000 \
+                    -e DB_USER="$DB_USER" \
+                    -e DB_PASSWORD="$DB_PASSWORD" \
+                    -e DB_HOST="host.docker.internal" \
+                    -e DB_PORT="5432" \
+                    -e DB_NAME="employee_db" \
+                    employee-api:latest
                 '''
             }
         }
