@@ -39,3 +39,32 @@ resource "aws_subnet" "public" {
     ManagedBy   = "Terraform"
   }
 }
+
+resource "aws_internet_gateway" "employee_api_igw" {
+  vpc_id = aws_vpc.employee_api_vpc.id
+
+  tags = {
+    Name        = "${var.project_name}-igw"
+    project     = var.project_name
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.employee_api_vpc.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.employee_api_igw.id
+  }
+
+  tags = {
+    Name        = "${var.project_name}-public-rt"
+    project     = var.project_name
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+
+
