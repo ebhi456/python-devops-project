@@ -1,0 +1,41 @@
+variable "project_name" {
+  description = "Project name definition"
+  type        = string
+}
+
+variable "vpc_cidr_block" {
+  description = "VPC CIDR block definition"
+  type        = string
+}
+
+variable "public_subnet_cidr_block" {
+  description = "Public subnet CIDR block definition"
+  type        = string
+}
+
+resource "aws_vpc" "employee_api_vpc" {
+  cidr_block = var.vpc_cidr_block
+
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name        = "${var.project_name}-vpc"
+    project     = var.project_name
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
+
+resource "aws_subnet" "public" {
+  vpc_id                  = aws_vpc.employee_api_vpc.id
+  cidr_block              = var.public_subnet_cidr_block
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name        = "${var.project_name}-public-subnet"
+    project     = var.project_name
+    Environment = "dev"
+    ManagedBy   = "Terraform"
+  }
+}
