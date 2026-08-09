@@ -39,3 +39,8 @@ variable "ec2_root_volume_type" {
   type        = string
   default     = "gp2"
 }
+
+variable "key_name" {
+  description = "AWS EC2 SSH key pair name"
+  type        = string
+}
