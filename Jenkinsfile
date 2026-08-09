@@ -51,34 +51,32 @@ pipeline {
             }
         }
 
-        stage('Deploy Docker Container') {
+        stage('Docker run') {
             steps {
-                sh '''
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'employee-db-credentials',
-                            usernameVariable: 'DB_USER',
-                            passwordVariable: 'DB_PASSWORD'
-                        )
-                    ]) {
-                        export DB_USER="$DB_USER"
-                        export DB_PASSWORD="$DB_PASSWORD"
-                    }
-                    docker stop employee-api 2>/dev/null || true
-                    docker rm employee-api 2>/dev/null || true
-                    
-                    docker run -d \
-                    --name employee-api \
-                    --restart unless-stopped \
-                    --add-host=host.docker.internal:host-gateway \
-                    -p 8000:8000 \
-                    -e DB_USER="$DB_USER" \
-                    -e DB_PASSWORD="$DB_PASSWORD" \
-                    -e DB_HOST="host.docker.internal" \
-                    -e DB_PORT="5432" \
-                    -e DB_NAME="employee_db" \
-                    employee-api:latest
-                '''
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'employee-db-credentials',
+                        usernameVariable: 'DB_USER',
+                        passwordVariable: 'DB_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "Stopting and removing any existing containers..."
+                        docker stop employee-api || true
+                        docker rm employee-api || true
+                        echo "Starting the application container..."
+                        docker run -d --name employee-api -p 8000:8000 \
+                            -e DB_USER=$DB_USER \
+                            -e DB_PASSWORD=$DB_PASSWORD \
+                            -e DB_HOST=db \
+                            -e DB_PORT=5432 \
+                            -e DB_NAME=employee_db \
+                            employee-api:${BUILD_NUMBER}
+                        
+                        echo "Application container started."
+                        docker ps
+                    '''
+                }
             }
         }
         stage('Health Check') {
