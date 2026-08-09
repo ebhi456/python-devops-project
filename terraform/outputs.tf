@@ -22,3 +22,18 @@ output "ecr_repository_url" {
   description = "ECR repository URL"
   value       = aws_ecr_repository.employee_api.repository_url
 }
+
+output "eks_cluster_name" {
+  description = "EKS cluster name"
+  value       = aws_eks_cluster.employee_api.name
+}
+
+output "eks_cluster_endpoint" {
+  description = "EKS cluster API endpoint"
+  value       = aws_eks_cluster.employee_api.endpoint
+}
+
+output "eks_cluster_security_group_id" {
+  description = "EKS cluster security group ID"
+  value       = aws_security_group.eks_cluster_sg.id
+}
