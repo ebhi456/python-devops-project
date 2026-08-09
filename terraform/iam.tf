@@ -37,6 +37,7 @@ resource "aws_iam_policy" "employee_api_ec2_role_policy" {
 
         Action = [
           "ecr:GetAuthorizationToken",
+          "ecr:DescribeRepositories",
           "ecr:BatchCheckLayerAvailability",
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage"
