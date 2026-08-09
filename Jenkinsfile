@@ -32,23 +32,17 @@ pipeline {
                     sh '''
                         . jenkins-venv/bin/activate
 
-                        DB_HOST=localhost \
-                        DB_PORT=5432 \
-                        DB_NAME=employee_db \
+                        export DB_HOST=localhost
+                        export DB_PORT=5432
+                        export DB_NAME=employee_db
+
                         pytest
                     '''
                 }
             }
         }
-        stage('Build Docker Image') {
-            steps {
-                sh '''
-                    docker build -t employee-api:${BUILD_NUMBER} .
-                    docker tag employee-api:${BUILD_NUMBER} employee-api:latest
-                '''
-            }
-        }
-        stage('Deploy Docker') {
+
+        stage('Start Application') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -58,33 +52,47 @@ pipeline {
                     )
                 ]) {
                     sh '''
-                        docker stop $(docker ps -q --filter "name=employee-api") || true
-                        docker rm $(docker ps -a -q --filter "name=employee-api") || true
-                        
-                        docker run -d --name employee-api \
-                            -p 8000:8000 \
-                            -e DB_USER=$DB_USER \
-                            -e DB_PASSWORD=$DB_PASSWORD \
-                            -e DB_HOST=db \
-                            -e DB_PORT=5432 \
-                            -e DB_NAME=employee_db \
-                            employee-api:${BUILD_NUMBER}
+                        . jenkins-venv/bin/activate
+
+                        export DB_HOST=localhost
+                        export DB_PORT=5432
+                        export DB_NAME=employee_db
+
+                        nohup uvicorn app:app \
+                            --host 0.0.0.0 \
+                            --port 8000 \
+                            > app.log 2>&1 &
+
+                        echo $! > app.pid
                     '''
                 }
             }
         }
+
         stage('Health Check') {
             steps {
                 sh '''
                     echo "Waiting for the application to start..."
-                    # Wait for a few seconds to allow the application to start
-                    sleep 10
-                    curl -f http://localhost:8000/health || exit 1
-                    echo "Health check passed!"
+
+                    for i in {1..30}; do
+                        if curl -fs http://localhost:8000/health; then
+                            echo "Application is healthy!"
+                            exit 0
+                        fi
+
+                        sleep 2
+                    done
+
+                    echo "Application failed to start."
+                    echo "===== Application logs ====="
+                    cat app.log || true
+
+                    exit 1
                 '''
             }
         }
     }
+
     post {
         success {
             echo 'CI Pipeline completed successfully!'
@@ -92,6 +100,7 @@ pipeline {
 
         failure {
             echo 'CI Pipeline failed!'
+            sh 'cat app.log || true'
         }
 
         always {
