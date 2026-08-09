@@ -21,55 +21,62 @@ pipeline {
             }
         }
 
-        stage('Deploy with Docker Compose') {
+        stage('Run Tests') {
             steps {
                 withCredentials([
                     string(credentialsId: 'DB_USER', variable: 'DB_USER'),
                     string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD'),
-                    string(credentialsId: 'DB_HOST', variable: 'DB_HOST'),
-                    string(credentialsId: 'DB_PORT', variable: 'DB_PORT'),
                     string(credentialsId: 'DB_NAME', variable: 'DB_NAME')
                 ]) {
                     sh '''
-                        echo "DB_USER is set: ${DB_USER:+YES}"
-                        echo "DB_HOST is set: ${DB_HOST:+YES}"
-                        echo "DB_PORT is set: ${DB_PORT:+YES}"
-                        echo "DB_NAME is set: ${DB_NAME:+YES}"
-                        echo "DB_PASSWORD is set: ${DB_PASSWORD:+YES}"
+                        . jenkins-venv/bin/activate
 
-                        docker compose down || true
+                        export DB_HOST=localhost
+                        export DB_PORT=5432
 
-                        docker compose up -d --build
+                        pytest
                     '''
                 }
             }
         }
 
-        stage('Verify Containers') {
+        stage('Deploy with Docker Compose') {
             steps {
-                sh '''
-                    docker compose ps
-                '''
-            }
-        }
+                withCredentials([
+                    string(credentialsId: 'DB_USER', variable: 'DB_USER'),
+                    string(credentialsId: 'DB_PASSWORD', variable: 'DB_PASSWORD'),
+                    string(credentialsId: 'DB_NAME', variable: 'DB_NAME')
+                ]) {
+                    sh '''
+                        echo "Stopping existing Docker Compose application..."
 
-        stage('Run Tests') {
-            steps {
-                sh '''
-                    . jenkins-venv/bin/activate
+                        docker compose down || true
 
-                    pytest
-                '''
+                        echo "Building and starting application..."
+
+                        docker compose up -d --build
+
+                        echo "Docker Compose deployment completed."
+
+                        docker compose ps
+                    '''
+                }
             }
         }
 
         stage('Health Check') {
             steps {
                 sh '''
-                    echo "Waiting for application..."
+                    echo "Waiting for application to start..."
+
                     sleep 10
 
+                    echo "Checking application health..."
+
                     curl -f http://localhost:8000/health
+
+                    echo ""
+                    echo "Application is healthy!"
                 '''
             }
         }
@@ -82,6 +89,14 @@ pipeline {
 
         failure {
             echo 'CI/CD Pipeline failed!'
+            sh '''
+                docker compose ps || true
+                docker compose logs --tail=50 || true
+            '''
+        }
+
+        always {
+            echo 'Pipeline execution completed.'
         }
     }
 }
