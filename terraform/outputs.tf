@@ -33,3 +33,18 @@ output "security_group_id" {
   description = "employee api security group id"
   value = aws_security_group.employee_api_sg.id
 }
+
+output "ec2_instance_id" {
+  description = "Employee API EC2 instance ID"
+  value       = aws_instance.employee_api.id
+}
+
+output "ec2_public_ip" {
+  description = "Employee API EC2 public IP"
+  value       = aws_instance.employee_api.public_ip
+}
+
+output "ec2_public_dns" {
+  description = "Employee API EC2 public DNS"
+  value       = aws_instance.employee_api.public_dns
+}
