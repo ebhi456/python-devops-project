@@ -112,18 +112,18 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = local.alb_controller_namespace
   version    = "1.14.0"
 
-  set {
-    name  = "clusterName"
-    value = aws_eks_cluster.employee_api.name
-  }
-
-  set {
-    name  = "serviceAccount.create"
-    value = "false"
-  }
-
-  set {
-    name  = "region"
-    value = var.aws_region
-  }
+  set = [
+    {
+      name  = "clusterName"
+      value = aws_eks_cluster.employee_api.name
+    },
+    {
+      name  = "serviceAccount.create"
+      value = "false"
+    },
+    {
+      name  = "region"
+      value = var.aws_region
+    }
+  ]
 }
