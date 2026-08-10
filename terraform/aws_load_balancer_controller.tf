@@ -3,7 +3,7 @@
 ############################################
 
 locals {
-  alb_controller_namespace     = "kube-system"
+  alb_controller_namespace      = "kube-system"
   alb_controller_service_account = "aws-load-balancer-controller"
 
   eks_oidc_issuer = replace(
@@ -56,7 +56,6 @@ resource "aws_iam_role" "aws_load_balancer_controller" {
         Condition = {
           StringEquals = {
             "${local.eks_oidc_issuer}:aud" = "sts.amazonaws.com"
-
             "${local.eks_oidc_issuer}:sub" = "system:serviceaccount:${local.alb_controller_namespace}:${local.alb_controller_service_account}"
           }
         }
@@ -113,17 +112,17 @@ resource "helm_release" "aws_load_balancer_controller" {
   namespace  = local.alb_controller_namespace
   version    = "1.14.0"
 
-  set = {
+  set {
     name  = "clusterName"
     value = aws_eks_cluster.employee_api.name
   }
 
-  set = {
+  set {
     name  = "serviceAccount.create"
     value = "false"
   }
 
-  set = {
+  set {
     name  = "region"
     value = var.aws_region
   }

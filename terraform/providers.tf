@@ -1,4 +1,3 @@
-
 terraform {
   required_version = "> 1.5.0"
 
@@ -34,10 +33,6 @@ provider "aws" {
   region = var.aws_region
 }
 
-################################################
-## Kubernetes provider configuration
-################################################
-
 data "aws_eks_cluster" "employee_api" {
   name = aws_eks_cluster.employee_api.name
 }
@@ -52,12 +47,8 @@ provider "kubernetes" {
   token                  = data.aws_eks_cluster_auth.employee_api.token
 }
 
-################################################
-## Helm provider configuration  
-################################################
-
 provider "helm" {
-  kubernetes = {
+  kubernetes {
     host                   = data.aws_eks_cluster.employee_api.endpoint
     cluster_ca_certificate = base64decode(
       data.aws_eks_cluster.employee_api.certificate_authority[0].data
