@@ -1,0 +1,108 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: employee-db
+  namespace: employee-api
+  labels:
+    app: employee-db
+
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: employee-db
+
+  template:
+    metadata:
+      labels:
+        app: employee-db
+
+    spec:
+      containers:
+        - name: postgres
+
+          image: postgres:18
+
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+
+          envFrom:
+            - secretRef:
+                name: employee-db-secret
+
+          env:
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: employee-db-secret
+                  key: DB_USER
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: employee-db-secret
+                  key: DB_PASSWORD
+
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: employee-db-secret
+                  key: DB_NAME
+
+          ports:
+            - containerPort: 5432
+
+          readinessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+
+          volumeMounts:
+            - name: postgres-data
+              mountPath: /var/lib/postgresql
+
+      volumes:
+        - name: postgres-data
+          persistentVolumeClaim:
+            claimName: employee-db-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: employee-db
+  namespace: employee-api
+  labels:
+    app: employee-db
+
+spec:
+  type: ClusterIP
+
+  selector:
+    app: employee-db
+
+  ports:
+    - name: postgres
+      port: 5432
+      targetPort: 5432
+      protocol: TCP

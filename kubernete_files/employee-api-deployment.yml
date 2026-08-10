@@ -3,31 +3,63 @@ kind: Deployment
 metadata:
   name: employee-api
   namespace: employee-api
+  labels:
+    app: employee-api
+
 spec:
   replicas: 2
+
   selector:
     matchLabels:
       app: employee-api
+
   template:
     metadata:
       labels:
         app: employee-api
+
     spec:
       containers:
         - name: employee-api
+
           image: 965224989055.dkr.ecr.us-east-1.amazonaws.com/python-devops-project-app:35
+
           imagePullPolicy: Always
+
           ports:
-            - containerPort: 8000
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          envFrom:
+            - configMapRef:
+                name: employee-api-config
+
+            - secretRef:
+                name: employee-db-secret
+
           readinessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: http
             initialDelaySeconds: 10
             periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
           livenessProbe:
             httpGet:
               path: /health
-              port: 8000
+              port: http
             initialDelaySeconds: 30
             periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
